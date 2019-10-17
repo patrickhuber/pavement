@@ -164,6 +164,30 @@ resource "azure_image" "ubuntu_18_04" {
 }
 ```
 
+## Authentication
+
+```
+resource "ssh_key_authentication" "pavement" {
+    username            = ""
+    private_key_file    = ""
+}
+```
+
+```
+resource "winrm_authentication" "pavement" {
+    username = ""
+    password = ""
+}
+```
+
+```
+resource "ssh_password_authentication" "pavement" {
+    username = ""
+    password = ""
+}
+```
+
+
 ## Compute Types
 
 Pavement compute types map vm sizes to pavement compute types. 
@@ -327,6 +351,13 @@ resource "deployment" "rabbitmq" {
         service {
             name        = "rabbitmq"
             image       = "ubuntu:18.04"
+
+            process {
+                name        = "rabbitmq"
+                executable  = "bin/rabbitmq"
+                args        = [ ]
+                env         = [ FOO = "bar" ]
+            }
         }
         
         package {
