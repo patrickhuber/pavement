@@ -1,0 +1,15 @@
+
+network "test_network" {
+  network_type_name = ""
+  cidr              = "10.0.0.0/16"
+
+  subnets "dmz" {
+    cidr = "10.0.1.0/24"
+  }
+  subnets "intranet" {
+    cidr = "10.0.2.0/24"
+  }
+}
+
+network_type "test_network_type" {
+}
