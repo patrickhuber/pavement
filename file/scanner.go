@@ -11,22 +11,32 @@ import (
 type scanner struct {
 	reader   *bufio.Reader
 	position int
+	column   int
 }
 
 type Scanner interface {
 	Scan() (*Token, error)
+	Position() int
 }
 
 func NewScanner(reader io.Reader) Scanner {
 	return &scanner{
 		reader:   bufio.NewReader(reader),
 		position: 0,
+		column:   0,
 	}
+}
+
+func (s *scanner) Position() int {
+	return s.position
 }
 
 func (s *scanner) Scan() (*Token, error) {
 	r, err := s.read()
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return s.token(EOF, ""), nil
+		}
 		return nil, err
 	}
 	// If we see whitespace then consume all contiguous whitespace.
@@ -42,11 +52,18 @@ func (s *scanner) Scan() (*Token, error) {
 			return nil, err
 		}
 		return s.identifier()
+	case r == '\\':
+		return s.token(CONTINUATION, string(r)), nil
 	case r == ':':
 		return s.token(COLON, string(r)), nil
+	case r == '-' || r == '/':
+		if err := s.unread(); err != nil {
+			return nil, err
+		}
+		return s.flag()
 	}
 
-	return &Token{Type: ILLEGAL, Position: s.position}, nil
+	return &Token{Type: ILLEGAL, Position: s.position, Content: string(r)}, nil
 }
 
 func (s *scanner) whitespace() (*Token, error) {
@@ -93,6 +110,31 @@ func (s *scanner) identifier() (*Token, error) {
 				return nil, err
 			}
 			return s.token(IDENT, buf.String()), nil
+		}
+		i++
+	}
+}
+
+func (s *scanner) flag() (*Token, error) {
+	var buf bytes.Buffer
+	i := 0
+	for {
+		r, err := s.read()
+		switch {
+		case err != nil:
+			if errors.Is(io.EOF, err) {
+				return s.token(FLAG, buf.String()), nil
+			}
+			return nil, err
+		case unicode.IsLetter(r) || (unicode.IsNumber(r) && i > 0) || r == '/' && i == 0 || r == '-' && i <= 1:
+			if _, err = buf.WriteRune(r); err != nil {
+				return nil, err
+			}
+		default:
+			if err = s.unread(); err != nil {
+				return nil, err
+			}
+			return s.token(FLAG, buf.String()), nil
 		}
 		i++
 	}
