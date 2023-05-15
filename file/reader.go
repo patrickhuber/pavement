@@ -2,7 +2,6 @@ package file
 
 import (
 	"fmt"
-	"strings"
 )
 
 type reader struct {
@@ -32,7 +31,7 @@ func (r *reader) Next() (bool, error) {
 	for {
 		token, err := r.scanner.Scan()
 		if err != nil {
-			return false, err
+			return false, r.err("%w", err)
 		}
 		switch token.Type {
 		case EOF:
@@ -59,6 +58,7 @@ func (r *reader) directive(token *Token) (*Directive, error) {
 	if !ok {
 		return nil, r.err("invalid directive type '%s'", token.Content)
 	}
+
 	switch dt {
 	case From:
 		return r.from()
@@ -69,6 +69,8 @@ func (r *reader) directive(token *Token) (*Directive, error) {
 	}
 }
 
+// FROM<WS>ubuntu:latest[WS]<EOL|EOF>
+// FROM<WS>ubuntu[WS]<EOL|EOF>
 func (r *reader) from() (*Directive, error) {
 	err := r.whitespace()
 	if err != nil {
@@ -93,6 +95,21 @@ func (r *reader) from() (*Directive, error) {
 		}
 		version = t.Content
 	}
+
+	// optional whitespace
+	_, ok, err = r.optional(WS)
+	if err != nil {
+		return nil, err
+	}
+
+	// read eol or eof if previous was ws
+	if ok {
+		_, err = r.any(EOF, EOL)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &Directive{
 		Type: From,
 		From: &FromDirective{
@@ -133,24 +150,21 @@ func (r *reader) run() (*Directive, error) {
 func (r *reader) args() ([]string, error) {
 	var arguments []string
 	for {
-		t, err := r.scanner.Scan()
+		t, err := r.read()
 		if err != nil {
 			return nil, err
 		}
 		if t.Type == EOF {
 			break
 		}
-		if t.Type == CONTINUATION {
-			continue // skip continuation
+		if t.Type == EOL {
+			break
 		}
 		if t.Type == WS {
-			if strings.ContainsRune(t.Content, '\r') {
-				break // break on newline
-			}
 			continue // skip whitespace
 		}
-		if t.Type != IDENT && t.Type != FLAG {
-			return nil, r.err("expected IDENT or FLAG, found '%s'", t.Content)
+		if t.Type != IDENT && t.Type != FLAG && t.Type != STRING {
+			return nil, r.err("expected IDENT, FLAG or STRING but found %s(%s)", t.Type.String(), t.Content)
 		}
 		arguments = append(arguments, t.Content)
 	}
@@ -158,7 +172,7 @@ func (r *reader) args() ([]string, error) {
 }
 
 func (r *reader) whitespace() error {
-	t, err := r.scanner.Scan()
+	t, err := r.read()
 	if err != nil {
 		return err
 	}
@@ -169,7 +183,7 @@ func (r *reader) whitespace() error {
 }
 
 func (r *reader) expect(tokenType TokenType) (*Token, error) {
-	t, err := r.scanner.Scan()
+	t, err := r.read()
 	if err != nil {
 		return nil, err
 	}
@@ -180,12 +194,56 @@ func (r *reader) expect(tokenType TokenType) (*Token, error) {
 }
 
 func (r *reader) optional(tokenType TokenType) (*Token, bool, error) {
-	t, err := r.scanner.Scan()
+	t, err := r.read()
 	if err != nil {
 		return nil, false, err
 	}
 	ok := t.Type == tokenType
 	return t, ok, nil
+}
+
+func (r *reader) any(tokenTypes ...TokenType) (*Token, error) {
+	if len(tokenTypes) == 0 {
+		return nil, r.err("no token types specified")
+	}
+	t, err := r.read()
+	if err != nil {
+		return nil, err
+	}
+	for _, tt := range tokenTypes {
+		if t.Type == tt {
+			return t, nil
+		}
+	}
+	return nil, fmt.Errorf("token type '%s' does not match any required type", t.Type.String())
+}
+
+// read reads the token and if the token is a CONTINUATION it replaces the CONTINUATION and EOL with an empty WS token
+func (r *reader) read() (*Token, error) {
+
+	t, err := r.scanner.Scan()
+	if err != nil {
+		return nil, err
+	}
+
+	// if the token is not a continuation, we are done
+	if t.Type != CONTINUATION {
+		return t, nil
+	}
+
+	// read the next token.
+	t, err = r.scanner.Scan()
+	if err != nil {
+		return nil, err
+	}
+
+	//  we are expecting a EOL token
+	if t.Type != EOL {
+		return nil, r.err("EOL expected after CONTINUATION found '%s'", t.Type.String())
+	}
+
+	// return empty whitespace
+	return &Token{Type: WS, Position: r.scanner.Position()}, nil
 }
 
 func (r *reader) err(message string, param ...any) error {

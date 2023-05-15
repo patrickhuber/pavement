@@ -32,10 +32,73 @@ RUN ls -la`
 	testReader(t, str, expected)
 }
 
+func TestCanReadWithContinuationBetweenRun(t *testing.T) {
+	str := `FROM ubuntu:latest
+RUN ls \
+-la
+RUN echo "hello"`
+	expected := []*file.Directive{
+		{
+			Type: file.From,
+			From: &file.FromDirective{
+				Base:    "ubuntu",
+				Version: "latest",
+			},
+		},
+		{
+			Type: file.Run,
+			Run: &file.RunDirective{
+				Command: "ls",
+				Arguments: []string{
+					"-la",
+				},
+			},
+		},
+		{
+			Type: file.Run,
+			Run: &file.RunDirective{
+				Command: "echo",
+				Arguments: []string{
+					`"hello"`,
+				},
+			},
+		},
+	}
+
+	testReader(t, str, expected)
+}
+
+func TestFailsWithoutContinuation(t *testing.T) {
+	str := `FROM ubuntu:latest
+RUN ls
+-la`
+	testReaderFail(t, str, 2)
+}
+
+func testReaderFail(t *testing.T, str string, failOn int) {
+	reader := strings.NewReader(str)
+	fileReader := file.NewReader(file.NewScanner(reader))
+	for i := 0; true; i++ {
+		more, err := fileReader.Next()
+		if err != nil {
+			if i == failOn {
+				return
+			}
+			require.Nil(t, err)
+		}
+		if !more {
+			if i == failOn {
+				break
+			}
+			require.Fail(t, "wrong", "expected to fail on %d actual %d", failOn, i)
+		}
+	}
+}
 func testReader(t *testing.T, str string, expected []*file.Directive) {
 
 	reader := strings.NewReader(str)
 	fileReader := file.NewReader(file.NewScanner(reader))
+
 	for i := 0; i < len(expected); i++ {
 
 		more, err := fileReader.Next()

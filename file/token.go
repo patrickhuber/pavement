@@ -11,11 +11,13 @@ type TokenType int
 const (
 	ILLEGAL TokenType = iota
 	EOF
+	EOL
 	WS
 	IDENT
 	COLON
 	CONTINUATION
 	FLAG
+	STRING
 )
 
 func (tt TokenType) String() string {
@@ -34,6 +36,10 @@ func (tt TokenType) String() string {
 		return "continuation"
 	case FLAG:
 		return "flag"
+	case EOL:
+		return "eol"
+	case STRING:
+		return "string"
 	}
 	return ""
 }

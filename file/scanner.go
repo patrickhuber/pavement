@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"unicode"
 )
@@ -42,6 +43,11 @@ func (s *scanner) Scan() (*Token, error) {
 	// If we see whitespace then consume all contiguous whitespace.
 	// If we see a letter then consume as an ident or reserved word.
 	switch {
+	case r == '\n' || r == '\r':
+		if err := s.unread(); err != nil {
+			return nil, err
+		}
+		return s.endOfLine()
 	case unicode.IsSpace(r):
 		if err := s.unread(); err != nil {
 			return nil, err
@@ -61,9 +67,63 @@ func (s *scanner) Scan() (*Token, error) {
 			return nil, err
 		}
 		return s.flag()
+	case r == '"' || r == '\'':
+		if err := s.unread(); err != nil {
+			return nil, err
+		}
+		return s.string()
 	}
 
 	return &Token{Type: ILLEGAL, Position: s.position, Content: string(r)}, nil
+}
+
+func (s *scanner) string() (*Token, error) {
+	var start rune
+	var buf bytes.Buffer
+	for i := 0; true; i++ {
+
+		r, err := s.read()
+		if err != nil {
+			return nil, err
+		}
+
+		buf.WriteRune(r)
+
+		if i == 0 {
+			start = r
+			continue
+		}
+
+		if start == r {
+			break
+		}
+	}
+	return s.token(STRING, buf.String()), nil
+}
+
+func (s *scanner) endOfLine() (*Token, error) {
+
+	var buf bytes.Buffer
+	for i := 0; i < 2; i++ {
+
+		// read the next character
+		r, err := s.read()
+		if err != nil {
+			return nil, err
+		}
+
+		// if we don't recognize the character, bail
+		switch r {
+		case '\n':
+			buf.WriteRune(r)
+			return s.token(EOL, buf.String()), nil
+		case '\r':
+			buf.WriteRune(r)
+		default:
+			return nil, fmt.Errorf("unrecognized newline character %c", r)
+		}
+	}
+	return nil, fmt.Errorf("unable to read end of line characters")
 }
 
 func (s *scanner) whitespace() (*Token, error) {
@@ -77,7 +137,7 @@ func (s *scanner) whitespace() (*Token, error) {
 				return s.token(WS, buf.String()), nil
 			}
 			return nil, err
-		case unicode.IsSpace(r):
+		case r == '\t' || r == '\v' || r == '\f' || r == ' ':
 			if _, err = buf.WriteRune(r); err != nil {
 				return nil, err
 			}

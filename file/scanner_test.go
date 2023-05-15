@@ -52,10 +52,36 @@ arg1 arg2`
 		{Type: file.IDENT, Position: 4, Content: "command"},
 		{Type: file.WS, Position: 11, Content: " "},
 		{Type: file.CONTINUATION, Position: 12, Content: `\`},
-		{Type: file.WS, Position: 13, Content: "\n"},
+		{Type: file.EOL, Position: 13, Content: "\n"},
 		{Type: file.IDENT, Position: 14, Content: "arg1"},
 		{Type: file.WS, Position: 18, Content: " "},
 		{Type: file.IDENT, Position: 19, Content: "arg2"}}
+	testScanner(t, expected, str)
+}
+
+func TestCanScanContinuationAndOther(t *testing.T) {
+	str := `RUN command \
+arg1 arg2
+RUN command arg3 arg4`
+	expected := []*file.Token{
+		{Type: file.IDENT, Position: 0, Content: "RUN"},
+		{Type: file.WS, Position: 3, Content: " "},
+		{Type: file.IDENT, Position: 4, Content: "command"},
+		{Type: file.WS, Position: 11, Content: " "},
+		{Type: file.CONTINUATION, Position: 12, Content: `\`},
+		{Type: file.EOL, Position: 13, Content: "\n"},
+		{Type: file.IDENT, Position: 14, Content: "arg1"},
+		{Type: file.WS, Position: 18, Content: " "},
+		{Type: file.IDENT, Position: 19, Content: "arg2"},
+		{Type: file.EOL, Position: 23, Content: "\n"},
+		{Type: file.IDENT, Position: 24, Content: "RUN"},
+		{Type: file.WS, Position: 27, Content: " "},
+		{Type: file.IDENT, Position: 28, Content: "command"},
+		{Type: file.WS, Position: 35, Content: " "},
+		{Type: file.IDENT, Position: 36, Content: "arg3"},
+		{Type: file.WS, Position: 40, Content: " "},
+		{Type: file.IDENT, Position: 41, Content: "arg4"}}
+
 	testScanner(t, expected, str)
 }
 
@@ -71,6 +97,21 @@ func TestCanScanFlags(t *testing.T) {
 		{Type: file.FLAG, Position: 19, Content: "--flag2"},
 		{Type: file.WS, Position: 26, Content: " "},
 		{Type: file.FLAG, Position: 27, Content: "/flag3"}}
+
+	testScanner(t, expected, str)
+}
+
+func TestCanScanStringArgument(t *testing.T) {
+	str := `RUN command "argument" other`
+	expected := []*file.Token{
+		{Type: file.IDENT, Position: 0, Content: "RUN"},
+		{Type: file.WS, Position: 3, Content: " "},
+		{Type: file.IDENT, Position: 4, Content: "command"},
+		{Type: file.WS, Position: 11, Content: " "},
+		{Type: file.STRING, Position: 12, Content: `"argument"`},
+		{Type: file.WS, Position: 22, Content: " "},
+		{Type: file.IDENT, Position: 23, Content: "other"},
+	}
 
 	testScanner(t, expected, str)
 }
