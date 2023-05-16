@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/patrickhuber/pavement/directive"
 	"github.com/patrickhuber/pavement/file"
 	"github.com/stretchr/testify/require"
 )
@@ -11,17 +12,17 @@ import (
 func TestCanRead(t *testing.T) {
 	str := `FROM ubuntu:latest
 RUN ls -la`
-	expected := []*file.Directive{
+	expected := []*directive.Directive{
 		{
-			Type: file.From,
-			From: &file.FromDirective{
+			Type: directive.FromType,
+			From: &directive.From{
 				Base:    "ubuntu",
 				Version: "latest",
 			},
 		},
 		{
-			Type: file.Run,
-			Run: &file.RunDirective{
+			Type: directive.RunType,
+			Run: &directive.Run{
 				Command: "ls",
 				Arguments: []string{
 					"-la",
@@ -37,17 +38,17 @@ func TestCanReadWithContinuationBetweenRun(t *testing.T) {
 RUN ls \
 -la
 RUN echo "hello"`
-	expected := []*file.Directive{
+	expected := []*directive.Directive{
 		{
-			Type: file.From,
-			From: &file.FromDirective{
+			Type: directive.FromType,
+			From: &directive.From{
 				Base:    "ubuntu",
 				Version: "latest",
 			},
 		},
 		{
-			Type: file.Run,
-			Run: &file.RunDirective{
+			Type: directive.RunType,
+			Run: &directive.Run{
 				Command: "ls",
 				Arguments: []string{
 					"-la",
@@ -55,8 +56,8 @@ RUN echo "hello"`
 			},
 		},
 		{
-			Type: file.Run,
-			Run: &file.RunDirective{
+			Type: directive.RunType,
+			Run: &directive.Run{
 				Command: "echo",
 				Arguments: []string{
 					`"hello"`,
@@ -94,7 +95,7 @@ func testReaderFail(t *testing.T, str string, failOn int) {
 		}
 	}
 }
-func testReader(t *testing.T, str string, expected []*file.Directive) {
+func testReader(t *testing.T, str string, expected []*directive.Directive) {
 
 	reader := strings.NewReader(str)
 	fileReader := file.NewReader(file.NewScanner(reader))
@@ -113,25 +114,25 @@ func testReader(t *testing.T, str string, expected []*file.Directive) {
 	}
 }
 
-func directiveEqual(t *testing.T, expected, actual *file.Directive) {
+func directiveEqual(t *testing.T, expected, actual *directive.Directive) {
 	require.NotNil(t, expected)
 	require.NotNil(t, actual)
 	require.Equal(t, expected.Type, actual.Type)
 	switch expected.Type {
-	case file.From:
+	case directive.FromType:
 		fromEqual(t, expected.From, actual.From)
-	case file.Run:
+	case directive.RunType:
 		runEqual(t, expected.Run, actual.Run)
 	}
 }
 
-func fromEqual(t *testing.T, expected, actual *file.FromDirective) {
+func fromEqual(t *testing.T, expected, actual *directive.From) {
 	require.NotNil(t, expected)
 	require.NotNil(t, actual)
 	require.Equal(t, expected, actual)
 }
 
-func runEqual(t *testing.T, expected, actual *file.RunDirective) {
+func runEqual(t *testing.T, expected, actual *directive.Run) {
 	require.NotNil(t, expected)
 	require.NotNil(t, actual)
 	require.Equal(t, expected.Command, actual.Command)

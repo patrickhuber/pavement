@@ -1,45 +1,45 @@
-package file
+package directive
 
 type Directive struct {
 	Type DirectiveType
-	From *FromDirective
-	Run  *RunDirective
+	From *From
+	Run  *Run
 }
 
 type DirectiveType int
 
 const (
-	From DirectiveType = iota
-	Run
+	FromType DirectiveType = iota
+	RunType
 )
 
 func (dt DirectiveType) String() string {
 	switch dt {
-	case From:
+	case FromType:
 		return "FROM"
-	case Run:
+	case RunType:
 		return "RUN"
 	default:
 		return "UNKNOWN"
 	}
 }
 
-func ParseDirectiveType(s string) (DirectiveType, bool) {
+func ParseType(s string) (DirectiveType, bool) {
 	switch s {
 	case "FROM":
-		return From, true
+		return FromType, true
 	case "RUN":
-		return Run, true
+		return RunType, true
 	}
 	return DirectiveType(-1), false
 }
 
-type FromDirective struct {
+type From struct {
 	Base    string
 	Version string
 }
 
-type RunDirective struct {
+type Run struct {
 	Command   string
 	Arguments []string
 }

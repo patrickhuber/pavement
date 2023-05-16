@@ -2,16 +2,18 @@ package file
 
 import (
 	"fmt"
+
+	"github.com/patrickhuber/pavement/directive"
 )
 
 type reader struct {
-	current *Directive
+	current *directive.Directive
 	scanner Scanner
 }
 
 type Reader interface {
 	Next() (bool, error)
-	Current() *Directive
+	Current() *directive.Directive
 }
 
 func NewReader(s Scanner) Reader {
@@ -21,7 +23,7 @@ func NewReader(s Scanner) Reader {
 }
 
 // Current implements Reader
-func (r *reader) Current() *Directive {
+func (r *reader) Current() *directive.Directive {
 	return r.current
 }
 
@@ -53,16 +55,16 @@ func (r *reader) Next() (bool, error) {
 	}
 }
 
-func (r *reader) directive(token *Token) (*Directive, error) {
-	dt, ok := ParseDirectiveType(token.Content)
+func (r *reader) directive(token *Token) (*directive.Directive, error) {
+	dt, ok := directive.ParseType(token.Content)
 	if !ok {
 		return nil, r.err("invalid directive type '%s'", token.Content)
 	}
 
 	switch dt {
-	case From:
+	case directive.FromType:
 		return r.from()
-	case Run:
+	case directive.RunType:
 		return r.run()
 	default:
 		return nil, r.err("unable to parse directive %s", token.Content)
@@ -71,7 +73,7 @@ func (r *reader) directive(token *Token) (*Directive, error) {
 
 // FROM<WS>ubuntu:latest[WS]<EOL|EOF>
 // FROM<WS>ubuntu[WS]<EOL|EOF>
-func (r *reader) from() (*Directive, error) {
+func (r *reader) from() (*directive.Directive, error) {
 	err := r.whitespace()
 	if err != nil {
 		return nil, err
@@ -110,16 +112,16 @@ func (r *reader) from() (*Directive, error) {
 		}
 	}
 
-	return &Directive{
-		Type: From,
-		From: &FromDirective{
+	return &directive.Directive{
+		Type: directive.FromType,
+		From: &directive.From{
 			Base:    base,
 			Version: version,
 		},
 	}, nil
 }
 
-func (r *reader) run() (*Directive, error) {
+func (r *reader) run() (*directive.Directive, error) {
 	command := ""
 
 	_, err := r.expect(WS)
@@ -138,9 +140,9 @@ func (r *reader) run() (*Directive, error) {
 		return nil, err
 	}
 
-	return &Directive{
-		Type: Run,
-		Run: &RunDirective{
+	return &directive.Directive{
+		Type: directive.RunType,
+		Run: &directive.Run{
 			Command:   command,
 			Arguments: args,
 		},
