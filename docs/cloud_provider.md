@@ -5,7 +5,6 @@ The cloud provider is an abstraction layer where cloud (aws, gcp, azure, docker,
 
 ## Schema
 
-
 ```hcl
 provider {
     name      = "azure"
@@ -23,9 +22,37 @@ identity {
     client_secret   = secret.client_secret
 }
 
-subscription "default" {
+subscription {
     provider        = provider.default
     id              = var.subscription_id
     name            = var.subscription_name
+    alias           = "default"
+}
+
+region {
+    name     = "eastus"
+    provider = provider.default
+    alias    = "primary"
+}
+
+availability_zone {    
+    name     = "az1"
+    alias    = "az1"
+    provider = provider.default
+    region   = region.primary    
+}
+
+availability_zone {
+    name     = "az2"
+    alias    = "az2"
+    provider = provider.default
+    region   = region.primary    
+}
+
+availability_zone {
+    name     = "az3"
+    alias    = "az3"
+    provider = provider.default
+    region   = region.primary    
 }
 ```
