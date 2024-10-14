@@ -231,3 +231,24 @@ virtual_machine "web" {
     vm_type_id      = vm_type.default.id
 }
 ```
+
+## Virtual Machine Pool Types
+
+### azure
+
+```
+virtual_machine_type "default" {
+
+    provider    = "azure"
+    is_default  = true
+
+    properties = {
+        "instance_type" = "Standard_D1_v2"
+    }
+}
+
+virtual_machine_pool "web" {
+    image_id    = image.ubuntu.18_04.id
+    vm_type_id  = vm_type.default.id
+}
+```
