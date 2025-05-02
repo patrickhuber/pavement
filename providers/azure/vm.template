@@ -1,6 +1,0 @@
-{{range _, $vm := .VirtualMachines }}
-resource "azurerm_virtual_machine" "virtual_machine_{{$vm.Name}}" {
-    
-}
-
-{{end}}
