@@ -1,26 +1,34 @@
 package main
 
-import "github.com/alecthomas/kong"
+import (
+	"github.com/alecthomas/kong"
+	"github.com/patrickhuber/pavement/internal/docker"
+)
 
-var CLI struct {
+var cli struct {
 	Apply ApplyCommand `cmd:"" help:"Remove files."`
 }
 
 func main() {
-	ctx := kong.Parse(&CLI)
+	ctx := kong.Parse(&cli)
 	switch ctx.Command() {
 	case "apply <path>":
+		err := ctx.Run(&Context{})
+		ctx.FatalIfErrorf(err)
 	default:
 		panic(ctx.Command())
 	}
 }
 
-type Context struct{}
+type Context struct {
+	Debug bool
+}
 
 type ApplyCommand struct {
 	Paths []string `arg:"" name:"path" help:"Paths to remove." type:"path"`
 }
 
 func (r *ApplyCommand) Run(ctx *Context) error {
-	return nil
+	provider := &docker.Provider{}
+	return provider.Run()
 }
