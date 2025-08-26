@@ -1,7 +1,0 @@
-image file_image {
-    file = "./Pavementfile"
-}
-
-machine "demo" {
-    image = image.file_image    
-}
